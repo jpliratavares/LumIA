@@ -13,7 +13,7 @@ from utils.db_handler import create_connection
 
 # --- Configuração da API LLM (agora Groq) ---
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_API_KEY = "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" # Chave fornecida
+GROQ_API_KEY = "chave_de_api" # Chave fornecida
 GROQ_MODEL = "llama3-8b-8192"
 GROQ_TIMEOUT = 120.0 # Timeout para Groq (pode ser menor que Ollama local)
 
