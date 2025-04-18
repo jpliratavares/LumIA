@@ -1,0 +1,263 @@
+/* === Reset Básico & Estilos Globais === */
+:global(body) {
+  margin: 0;
+  font-family: 'Inter', 'Roboto', 'Segoe UI', sans-serif;
+  background-color: #0e0e0e;
+  color: #E0E0E0;
+  overflow: hidden;
+  height: 100vh;
+}
+
+:global(*) {
+  box-sizing: border-box;
+}
+
+/* === Layout Principal === */
+.appContainer {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  background-color: #0e0e0e;
+}
+
+/* === Sidebar === */
+.sidebar {
+  width: 25%;
+  max-width: 300px;
+  min-width: 200px;
+  background-color: #1a1a1a;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #333;
+  height: 100%;
+}
+
+.sidebarHeader {
+  padding: 15px;
+  border-bottom: 1px solid #333;
+}
+
+.logoPlaceholder {
+  font-size: 1.2em;
+  font-weight: bold;
+  color: #E0E0E0;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.newChatButton {
+  width: 100%;
+  padding: 10px 15px;
+  background-color: #007BFF;
+  color: #ffffff;
+  border: none;
+  border-radius: 5px;
+  font-size: 0.95em;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.newChatButton:hover {
+  background-color: #0056b3;
+}
+
+/* === Chat List === */
+.chatList {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 10px 0;
+}
+
+.chatListItem {
+  padding: 12px 15px;
+  color: #E0E0E0;
+  cursor: pointer;
+  border-bottom: 1px solid #2a2a2a;
+  transition: background-color 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chatListItem:hover {
+  background-color: #282c34;
+}
+
+.chatListItemActive {
+  background-color: #007BFF;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.chatListEmpty {
+  padding: 15px;
+  color: #888;
+  text-align: center;
+  font-style: italic;
+}
+
+/* === Chat Window === */
+.chatWindow {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #0e0e0e;
+}
+
+.noChatSelected {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  height: 100%;
+  color: #aaa;
+}
+
+.noChatSelected h1 {
+  color: #E0E0E0;
+}
+
+.chatHeader {
+  padding: 15px 20px;
+  background-color: #1f1f1f;
+  border-bottom: 1px solid #333;
+}
+
+.chatHeader h2 {
+  margin: 0;
+  font-size: 1.1em;
+  font-weight: 500;
+  color: #E0E0E0;
+}
+
+/* === Message List === */
+.messageList {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* === Message Bubble === */
+.messageRow {
+  display: flex;
+  margin-bottom: 15px;
+}
+
+.messageBubble {
+  padding: 10px 15px;
+  border-radius: 18px;
+  max-width: 70%;
+  word-wrap: break-word;
+}
+
+.messageBubble p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* User Message (Right) */
+.userMessage {
+  justify-content: flex-end;
+}
+
+.userMessage .messageBubble {
+  background-color: #1a1a1a;
+  color: #E0E0E0;
+  border-bottom-right-radius: 5px;
+}
+
+/* Lumia/Loading/Error Message (Left) */
+.lumiaMessage, .loadingMessage, .errorMessage {
+  justify-content: flex-start;
+}
+
+.lumiaMessage .messageBubble {
+  background-color: #20232A;
+  color: #E0E0E0;
+  border-bottom-left-radius: 5px;
+}
+
+.loadingMessage .messageBubble {
+  background-color: #2a2a2a; /* Cor um pouco diferente para loading */
+  color: #aaa;
+  font-style: italic;
+  border-bottom-left-radius: 5px;
+}
+
+.errorMessage .messageBubble {
+  background-color: #4d1f1f; /* Cor avermelhada para erro */
+  color: #f0d0d0;
+  border-bottom-left-radius: 5px;
+}
+
+/* === Chat Input === */
+.chatInputForm {
+  display: flex;
+  padding: 15px 20px;
+  border-top: 1px solid #333;
+  background-color: #1f1f1f;
+}
+
+.chatInput {
+  flex-grow: 1;
+  padding: 10px 15px;
+  border: 1px solid #444;
+  border-radius: 20px;
+  background-color: #2a2a2a;
+  color: #E0E0E0;
+  font-size: 1em;
+  font-family: inherit;
+  resize: none;
+  margin-right: 10px;
+  min-height: 40px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.chatInput:focus {
+  outline: none;
+  border-color: #007BFF;
+}
+
+.sendButton {
+  padding: 10px 20px;
+  background-color: #007BFF;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 1em;
+  transition: background-color 0.2s ease;
+}
+
+.sendButton:hover {
+  background-color: #0056b3;
+}
+
+.sendButton:disabled {
+    background-color: #555;
+    cursor: not-allowed;
+}
+
+/* === Scrollbars (Opcional) === */
+:global(::-webkit-scrollbar) {
+  width: 8px;
+}
+
+:global(::-webkit-scrollbar-track) {
+  background: #1a1a1a;
+}
+
+:global(::-webkit-scrollbar-thumb) {
+  background-color: #444;
+  border-radius: 10px;
+  border: 2px solid #1a1a1a;
+}
+
+:global(::-webkit-scrollbar-thumb:hover) {
+  background-color: #555;
+} 
