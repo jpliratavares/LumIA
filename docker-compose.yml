@@ -1,25 +1,31 @@
 version: '3.8'
 
 services:
-  lumia_app:
+  lumia_backend:
     build: .
-    container_name: lumia_app_container
+    container_name: lumia_backend_container
     ports:
       - "8000:8000"
     volumes:
       - ./db:/app/db
-    depends_on:
-      - ollama  # Garante que a API LLM esteja disponível
     restart: unless-stopped
+    networks:
+      - lumia_network
 
-  ollama:
-    image: ollama/ollama
-    container_name: ollama
+  lumia_frontend:
+    build: .
+    container_name: lumia_frontend_container
     ports:
-      - "11434:11434"  # Porta da API REST local da LLM
+      - "8501:8501"
+    command: streamlit run app.py --server.port 8501 --server.address 0.0.0.0
     volumes:
-      - ollama_data:/root/.ollama
+      - ./db:/app/db
+    depends_on:
+      - lumia_backend
     restart: unless-stopped
+    networks:
+      - lumia_network
 
-volumes:
-  ollama_data:
+networks:
+  lumia_network:
+    driver: bridge

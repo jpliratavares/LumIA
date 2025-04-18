@@ -3,47 +3,42 @@ import sys
 import os
 import sqlite3
 from urllib.parse import urljoin, urlparse
-from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
+from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError, Page
 
 # Adiciona o diretório pai ao sys.path para encontrar o módulo utils
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from utils.db_handler import create_connection, create_table, insert_data
 
-BASE_URL = "https://www.ufpb.br/prape"
+BASE_URL = "https://www.ufpb.br/"
 TABLE_NAME = "prape"
-KEYWORDS_LINKS = ["auxilio", "bolsa", "edital", "moradia", "renda", "assistencia"]
-IGNORE_EXTENSIONS = [".pdf", ".jpg", ".jpeg", ".png", ".css", ".js", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx"]
+IGNORE_EXTENSIONS = [".pdf", ".jpg", ".jpeg", ".png", ".css", ".js", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".zip", ".rar", ".mp3", ".mp4", ".avi", ".mov", ".svg", ".xml", ".ico"]
+MIN_WORDS_PARAGRAPH = 10
 
 visited_links = set()
 
 def is_relevant_link(url, base_url):
-    """ Verifica se um link é relevante para o scraping. """
+    """ Verifica se um link pertence ao domínio ufpb.br e não é um arquivo ignorado. """
     try:
         parsed_url = urlparse(url)
-        # Ignora links sem esquema, âncoras, javascript, mailto, etc.
+
+        # Ignora links sem scheme http/https
         if not parsed_url.scheme in ['http', 'https']:
-            # print(f"-- Ignorando link sem scheme http/https: {url}")
             return False
-        # Ignora links externos (opcionalmente, poderia permitir subdomínios)
-        if parsed_url.netloc != urlparse(base_url).netloc:
-            # print(f"-- Ignorando link externo: {url}")
-            return False
-        # Ignora extensões de arquivo
+
+        # Permite apenas links dentro de *.ufpb.br
+        if not parsed_url.netloc.endswith(".ufpb.br"):
+             return False
+
+        # Ignora se o path termina com uma extensão proibida
         path = parsed_url.path.lower()
         if any(path.endswith(ext) for ext in IGNORE_EXTENSIONS):
-            # print(f"-- Ignorando link com extensão proibida: {url}")
             return False
-        # Verifica se começa com a base ou contém keywords
-        if url.startswith(base_url):
-            return True
-        if any(keyword in url.lower() for keyword in KEYWORDS_LINKS):
-            return True
+
+        return True
     except Exception as e:
         print(f"Erro ao analisar link {url}: {e}")
         return False
-    # print(f"-- Ignorando link não relevante: {url}")
-    return False
 
 def check_if_exists(conn, table, resposta):
     """ Verifica se um registro com a mesma resposta já existe na tabela. """
@@ -52,27 +47,80 @@ def check_if_exists(conn, table, resposta):
     try:
         cur.execute(sql, (resposta,))
         exists = cur.fetchone() is not None
-        # if exists:
-        #     print(f"--- Resposta já existe no DB: {resposta[:30]}...")
         return exists
     except sqlite3.Error as e:
         print(f"Erro ao verificar existência na tabela {table}: {e}")
-        return False # Assume que não existe em caso de erro para tentar inserir
+        return False
+
+async def process_page(page: Page, current_url: str, conn) -> set:
+    """ Extrai links e conteúdo de uma página, insere no DB e retorna novos links. """
+    new_links_found = set()
+    inserted_count_page = 0
+    paragraphs_found_count = 0
+    page_title = "Título não encontrado"
+
+    try:
+        # --- Extração de Links ---
+        link_locators = page.locator('a[href]')
+        count = await link_locators.count()
+        for i in range(count):
+            href = await link_locators.nth(i).get_attribute('href')
+            if href:
+                try:
+                    absolute_url = urljoin(current_url, href.strip())
+                    parsed_abs = urlparse(absolute_url)
+                    normalized_url = parsed_abs._replace(fragment='').geturl().strip()
+                    if is_relevant_link(normalized_url, BASE_URL):
+                        new_links_found.add(normalized_url)
+                except Exception as e_link_proc:
+                    print(f"Erro processando href '{href}': {e_link_proc}")
+
+        # --- Extração de Conteúdo ---
+        page_title = await page.title() or "Título não encontrado"
+
+        paragraphs = []
+        para_locators = page.locator('p')
+        para_count = await para_locators.count()
+        paragraphs_found_count = para_count # Conta todos os <p> encontrados
+        for i in range(para_count):
+            p_text = await para_locators.nth(i).text_content()
+            if p_text:
+                cleaned_text = ' '.join(p_text.split())
+                if cleaned_text and len(cleaned_text.split()) >= MIN_WORDS_PARAGRAPH:
+                    paragraphs.append(cleaned_text)
+
+        # --- Inserção no Banco de Dados ---
+        if paragraphs:
+            for para_text in paragraphs:
+                if not check_if_exists(conn, TABLE_NAME, para_text):
+                    # ATENÇÃO: Inserindo dados de TODO o site na tabela 'prape'!
+                    insert_id = insert_data(conn, TABLE_NAME, page_title, para_text)
+                    if insert_id:
+                        inserted_count_page += 1
+
+    except Exception as e:
+        print(f"Erro inesperado ao processar conteúdo/links de {current_url}: {e}")
+
+    finally:
+        # --- Log da Página Processada ---
+        print(f"  Título: {page_title}")
+        print(f"  Parágrafos encontrados: {paragraphs_found_count} | Válidos (>{MIN_WORDS_PARAGRAPH-1} palavras): {len(paragraphs)} | Inseridos: {inserted_count_page}")
+
+    return new_links_found
 
 async def scrape_prape():
-    """ Realiza o scraping do site da PRAPE usando Playwright. """
-    print("Iniciando scraping dinâmico com Playwright...")
+    """ Realiza o scraping recursivo completo do domínio ufpb.br usando Playwright. """
+    print(f"Iniciando scraping recursivo completo de: {BASE_URL}")
     global visited_links
     links_to_visit = {BASE_URL}
     processed_links_count = 0
-    inserted_count_total = 0
 
     conn = create_connection()
     if conn is None:
         print("Erro: Não foi possível conectar ao banco de dados.")
         return
 
-    # Garante que a tabela existe com constraint UNIQUE na resposta
+    # Garante que a tabela existe
     sql_create_prape_table = f""" CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
                                         id integer PRIMARY KEY,
                                         pergunta text, -- Título da página
@@ -82,7 +130,6 @@ async def scrape_prape():
     create_table(conn, sql_create_prape_table)
 
     async with async_playwright() as p:
-        # Tenta usar Chromium, mas pode cair para Firefox ou WebKit se necessário
         try:
             browser = await p.chromium.launch()
             print("Usando Chromium.")
@@ -104,8 +151,8 @@ async def scrape_prape():
 
         page_context = await browser.new_context(
             user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            # Você pode adicionar outras configurações aqui, como ignorar erros HTTPS, etc.
         )
+        page = await page_context.new_page()
 
         while links_to_visit:
             current_url = links_to_visit.pop()
@@ -116,95 +163,25 @@ async def scrape_prape():
             processed_links_count += 1
             print(f"\n[{processed_links_count}] Visitando: {current_url}")
 
-            # ✅ Limite de segurança para evitar loops infinitos e excesso de RAM
-            if processed_links_count > 150:
-                print("⚠️ Limite de segurança de 150 links atingido. Encerrando para evitar overload.")
-                break
-
-            # ✅ Limpa o contexto do navegador a cada 10 páginas para liberar memória
-            if processed_links_count % 10 == 0:
-                print("🧹 Limpando contexto de navegador para liberar memória...")
-                await page_context.close()
-                page_context = await browser.new_context(
-                    user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-                )
-
-            page = None
             try:
-                page = await page_context.new_page()
                 await page.goto(current_url, timeout=60000, wait_until='domcontentloaded')
 
-                if current_url == BASE_URL:
-                    await page.wait_for_timeout(2000)
-                    print(await page.evaluate("() => navigator.userAgent"))
-
-                # --- Extração de Links ---
-                link_locators = page.locator('a[href]')
-                count = await link_locators.count()
-                new_links_found = set()
-                for i in range(count):
-                    href = await link_locators.nth(i).get_attribute('href')
-                    if href:
-                        try:
-                            absolute_url = urljoin(current_url, href.strip())
-                            parsed_abs = urlparse(absolute_url)
-                            normalized_url = parsed_abs._replace(fragment='').geturl().strip()
-                            if is_relevant_link(normalized_url, BASE_URL) and normalized_url not in visited_links:
-                                new_links_found.add(normalized_url)
-                        except Exception as e_link_proc:
-                            print(f"Erro processando href '{href}': {e_link_proc}")
-
-                if new_links_found:
-                    print(f"  + {len(new_links_found)} novos links relevantes encontrados.")
-                    links_to_visit.update(new_links_found)
-                else:
-                    print("  - Nenhum link novo relevante encontrado.")
-
-                # --- Extração de Conteúdo ---
-                page_title = await page.title() or "Título não encontrado"
-                print(f"  Título: {page_title}")
-
-                paragraphs = []
-                para_locators = page.locator('p')
-                para_count = await para_locators.count()
-                for i in range(para_count):
-                    p_text = await para_locators.nth(i).text_content()
-                    if p_text:
-                        cleaned_text = ' '.join(p_text.split())
-                        if cleaned_text:
-                            paragraphs.append(cleaned_text)
-
-                if not paragraphs:
-                    print("  - Nenhum parágrafo encontrado nesta página.")
-                    continue
-
-                print(f"  * Encontrados {len(paragraphs)} parágrafos para verificar/inserir.")
-                inserted_count_page = 0
-                for para_text in paragraphs:
-                    if not check_if_exists(conn, TABLE_NAME, para_text):
-                        insert_id = insert_data(conn, TABLE_NAME, page_title, para_text)
-                        if insert_id:
-                            inserted_count_page += 1
-
-                if inserted_count_page > 0:
-                    print(f"  ++ {inserted_count_page} novos registros inseridos do DB.")
-                    inserted_count_total += inserted_count_page
-                else:
-                    print("  -- Nenhum registro novo inserido (ou todos duplicados).")
+                # Processa a página atual (extrai links e conteúdo)
+                new_links = await process_page(page, current_url, conn)
+                links_to_visit.update(new_links - visited_links)
 
             except PlaywrightTimeoutError:
                 print(f"Erro de Timeout ao acessar: {current_url}")
             except Exception as e:
-                print(f"Erro inesperado ao processar {current_url}: {e}")
-            finally:
-                if page:
-                    await page.close()
+                print(f"Erro inesperado ao visitar/processar {current_url}: {type(e).__name__} - {e}")
+            # Não fecha a página aqui para reutilizar
 
+        await page.close()
+        await page_context.close()
         await browser.close()
 
-    print(f"\nScraping dinâmico concluído.")
-    print(f"Total de links visitados: {len(visited_links)}")
-    print(f"Total de registros novos inseridos: {inserted_count_total}")
+    print(f"\n--- Scraping Recursivo Concluído ---")
+    print(f"Total de links únicos visitados: {len(visited_links)}")
 
     if conn:
         conn.close()
