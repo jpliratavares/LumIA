@@ -1,0 +1,19 @@
+{
+  "rules": [
+    {
+      "pattern": ["**/agents/**/*.py", "**/orchestrators/**/*.py", "**/*_agent.py", "**/*_orchestrator.py"],
+      "rule": "ask",
+      "description": "Requer confirmação explícita para modificar arquivos de agentes ou orquestradores."
+    },
+    {
+      "pattern": "routes/**/*.py",
+      "rule": "allow",
+      "description": "Permite a criação e modificação de arquivos de rotas FastAPI em routes/."
+    },
+    {
+        "pattern": ["**/*.py"],
+        "rule": "ask",
+        "description": "Requer confirmação para modificar a maioria dos arquivos Python, prevenindo refatorações estruturais não solicitadas e alterações em múltiplos arquivos sem revisão."
+    }
+  ]
+} 

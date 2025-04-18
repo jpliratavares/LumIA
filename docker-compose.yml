@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  lumia_app:
+    build: .
+    container_name: lumia_app_container
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./db:/app/db
+    # O comando é definido no Dockerfile (CMD)
+    # command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+# Para construir e iniciar o serviço, use:
+# docker compose up --build
