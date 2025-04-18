@@ -8,8 +8,18 @@ services:
       - "8000:8000"
     volumes:
       - ./db:/app/db
-    # O comando é definido no Dockerfile (CMD)
-    # command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+    depends_on:
+      - ollama  # Garante que a API LLM esteja disponível
+    restart: unless-stopped
 
-# Para construir e iniciar o serviço, use:
-# docker compose up --build
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    ports:
+      - "11434:11434"  # Porta da API REST local da LLM
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
