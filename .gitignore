@@ -1,0 +1,40 @@
+# Arquivo .gitignore para o projeto LumIA
+
+# Ambiente Virtual Python
+venv/
+.venv/
+env/
+.env/
+
+# Arquivos Python compilados e caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Arquivos de IDEs e editores
+.idea/
+.vscode/
+*.swp
+
+# Arquivos de sistema operacional
+.DS_Store
+Thumbs.db
+
+# Arquivos de dependências e builds (se aplicável)
+build/
+dist/
+*.egg-info/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+node_modules/
+
+# Docker (opcional, se não quiser commitar certos arquivos docker)
+# docker-compose.override.yml
+
+# Banco de dados SQLite local (se não quiser commitar)
+# db/*.sqlite3
+
+# ARQUIVO DE VARIÁVEIS DE AMBIENTE - NÃO COMMITAR!
+.env 

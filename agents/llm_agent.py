@@ -5,17 +5,29 @@ import os
 import sqlite3
 from typing import Optional, List
 import asyncio
+from dotenv import load_dotenv
 
 # Adiciona o diretório raiz ao sys.path para encontrar o módulo utils
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+# Carrega variáveis de ambiente do arquivo .env
+load_dotenv()
 
 from utils.db_handler import create_connection
 
 # --- Configuração da API LLM (agora Groq) ---
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_API_KEY = "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" # Chave fornecida
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_MODEL = "llama3-8b-8192"
 GROQ_TIMEOUT = 120.0 # Timeout para Groq (pode ser menor que Ollama local)
+
+# Verificar se a chave foi carregada
+if not GROQ_API_KEY:
+    print("Erro: A variável de ambiente GROQ_API_KEY não foi definida.")
+    print("Verifique se você criou um arquivo .env na raiz do projeto com GROQ_API_KEY=sua_chave")
+    # Você pode optar por sair ou lançar uma exceção aqui
+    # sys.exit(1)
+    raise ValueError("GROQ_API_KEY não encontrada no ambiente.")
 
 # --- Configuração do DB (mantido) ---
 DB_TABLE_FOR_CONTEXT = "prape"
@@ -176,4 +188,8 @@ async def main_test_llm():
     print(f"Resposta LLM: {resposta_gen}")
 
 if __name__ == '__main__':
-    asyncio.run(main_test_llm()) 
+    try:
+        asyncio.run(main_test_llm())
+    except ValueError as e:
+        # Captura o erro se a chave não for encontrada
+        print(f"Erro ao iniciar o teste: {e}") 

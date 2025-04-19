@@ -5,4 +5,5 @@ beautifulsoup4
 playwright
 httpx
 aiosqlite
-streamlit 
+streamlit
+python-dotenv 

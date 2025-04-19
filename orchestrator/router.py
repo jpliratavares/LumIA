@@ -51,6 +51,16 @@ async def rotear(pergunta: str) -> Optional[Dict[str, Any]]:
     pergunta_lower = pergunta.lower()
     print(f"Orchestrator: Roteando pergunta: '{pergunta[:50]}...'")
 
+    # --- 🔍 Interceptação especial: Identidade da IA --- #
+    if any(x in pergunta_lower for x in ["qual seu nome", "teu nome", "seu nome", "quem é você", "quem é voce"]):
+        print("Orchestrator: Resposta direta para identidade da IA.")
+        return {
+            "answer": "Meu nome é LumIA! Sou a assistente inteligente da Universidade Federal da Paraíba (UFPB), criada para te ajudar com dúvidas acadêmicas, auxílios, notas e muito mais 🤖📚",
+            "raw_answer": None,
+            "logs": ["Resposta direta para pergunta sobre identidade da LumIA."]
+        }
+
+
     # --- Roteamento por Palavras-chave --- #
     # A ordem aqui pode ser importante dependendo do overlap das keywords
 
